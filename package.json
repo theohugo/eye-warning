@@ -17,9 +17,9 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:eye-warning.helloWorld",
     "onCommand:eye-warning.setInterval",
-    "onCommand:eye-warning.setImageFolder"
+    "onCommand:eye-warning.setImageFolder",
+    "onCommand:eye-warning.togglePokemon"
   ],
   "main": "./dist/extension.js",
   "files": ["dist/**", "images/**"],
@@ -34,8 +34,8 @@
         "title": "Eye Warning: Set Image Folder"
       },
       {
-        "command": "eye-warning.helloWorld",
-        "title": "Hello World"
+        "command": "eye-warning.togglePokemon",
+        "title": "Eye Warning: Toggle Pokémon Mode"
       }
     ],
     "configuration": {
@@ -51,6 +51,11 @@
           "type": "string",
           "default": "images",
           "description": "Absolute path to your PNG folder (leave empty for default)"
+        },
+        "eye-warning.usePokemon": {
+          "type": "boolean",
+          "default": false,
+          "description": "Si true, affiche un Pokémon aléatoire en pixel-art au lieu des images locales"
         }
       }
     }

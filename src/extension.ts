@@ -122,11 +122,13 @@ function showPanel(
   let pokemonId = -1;
 
   if (usePokemon) {
+    // Mode Pokémon : on choisit un sprite externe
     pokemonId = Math.floor(Math.random() * 898) + 1;
     const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
     imgUri = vscode.Uri.parse(spriteUrl);
     label  = `Pokémon n°${pokemonId}`;
   } else {
+    // Mode images locales
     const defaultFolder = path.join(context.extensionPath, 'images');
     const baseFolder    = path.isAbsolute(folderPath) && folderPath !== ''
       ? folderPath
@@ -137,7 +139,7 @@ function showPanel(
       pics = getAllPngFiles(defaultFolder);
     }
     if (pics.length === 0) {
-      return;
+      return; // rien à afficher
     }
 
     const pickPath = pics[Math.floor(Math.random() * pics.length)];
@@ -146,6 +148,7 @@ function showPanel(
     localRoots     = [vscode.Uri.file(path.dirname(pickPath))];
   }
 
+  // Création du Webview (scripts activés)
   const panel = vscode.window.createWebviewPanel(
     'eyeWarning',
     '👁️ Eye Warning',
@@ -156,6 +159,7 @@ function showPanel(
     }
   );
 
+  // Conversion URI Webview pour local
   if (!usePokemon) {
     imgUri = panel.webview.asWebviewUri(imgUri);
   }
@@ -167,12 +171,13 @@ function showPanel(
     html, body {
       margin:0; padding:0;
       height:100%; width:100%;
+      background:#1e1e1e; color:#ddd;
+      font-family:sans-serif;
       display:flex; flex-direction:column;
       justify-content:center; align-items:center;
-      background:#1e1e1e;
     }
     .container {
-      position: relative;
+      position:relative;
       display:flex; justify-content:center; align-items:center;
     }
     .pokemon {
@@ -197,30 +202,28 @@ function showPanel(
       margin-top:16px; padding:16px;
       background:#252526; border:2px solid #3c3c3c;
       border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.5);
-      display:flex; flex-direction:column;
-      align-items:center; /* centre les éléments */
-      width:auto; /* largeur automatique */
+      display:flex; flex-direction:column; align-items:center;
     }
     #lives {
-      margin-bottom:8px;
       background:#007acc; color:#fff;
       padding:4px 8px; border-radius:4px;
-      font-weight:bold;
+      font-weight:bold; margin-bottom:12px;
     }
-    #guessInput {
-      padding:6px 8px; font-size:14px;
-      border:none; border-radius:4px; outline:none;
-      width:160px; /* moins large */
-      margin:0 auto; /* centré */
+    #boxes {
+      display:flex; gap:8px; margin-bottom:12px;
+    }
+    .letter-box {
+      width:32px; height:32px; text-align:center;
+      font-size:18px; background:#1e1e1e; color:#ddd;
+      border:1px solid #3c3c3c; border-radius:4px;
+      outline:none;
+    }
+    .letter-box:disabled {
+      background:#3c3c3c; color:#fff; font-weight:bold;
     }
     #result {
-      margin-top:12px; font-size:16px; color:#ffd700;
-    }
-    #hint {
-      margin-top:8px; font-size:16px;
-      letter-spacing:4px; color:#a9f;
-      background:#444; padding:4px 8px;
-      border-radius:4px; font-family:monospace;
+      height:20px; font-size:16px; color:#ffd700;
+      margin-bottom:8px;
     }
     .filename {
       margin-top:12px; font-size:14px; color:#888;
@@ -235,17 +238,14 @@ function showPanel(
   ${usePokemon?`
   <div class="game">
     <div id="lives">Vies restantes : 3</div>
-    <input id="guessInput" placeholder="QUEL EST CE POKÉMON ?" />
+    <div id="boxes"></div>
     <div id="result"></div>
-    <div id="hint"></div>
   </div>`:``}
   <div class="filename">${label}</div>
 
   <script>
     (function(){
-      function normalize(str){
-        return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-      }
+      function normalize(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
       function levenshtein(a,b){
         const m=a.length,n=b.length;
         const dp=Array(m+1).fill(null).map(()=>Array(n+1).fill(0));
@@ -261,44 +261,74 @@ function showPanel(
       }
 
       ${usePokemon?`
-      let lives=3,answer='',hints=0;
+      let lives=3, answer='', hints=0;
       const livesEl=document.getElementById('lives');
-      const inputEl=document.getElementById('guessInput');
+      const boxesEl=document.getElementById('boxes');
       const resEl=document.getElementById('result');
-      const hintEl=document.getElementById('hint');
 
       fetch('https://pokeapi.co/api/v2/pokemon-species/${pokemonId}')
         .then(r=>r.json()).then(data=>{
-          const fr=data.names.find(n=>n.language.name==='fr');
-          answer=normalize(fr?fr.name:data.name);
-          hintEl.textContent='_'.repeat(answer.length);
+          const fr = data.names.find(n=>n.language.name==='fr');
+          answer = normalize(fr?fr.name:data.name);
+          // création des cases
+          for(let i=0;i<answer.length;i++){
+            const inp=document.createElement('input');
+            inp.type='text'; inp.maxLength=1;
+            inp.className='letter-box';
+            inp.dataset.idx=i;
+            inp.addEventListener('keydown',e=>{
+              if(e.key==='Backspace'){
+                if(inp.value){
+                  inp.value='';
+                } else {
+                  const prev=document.querySelector(\`.letter-box[data-idx="\${i-1}"]\`);
+                  if(prev){
+                    prev.value=''; prev.focus();
+                  }
+                }
+                e.preventDefault();
+              } else if(/^[a-zA-Z]$/.test(e.key)){
+                inp.value=e.key.toUpperCase();
+                e.preventDefault();
+                const next=document.querySelector(\`.letter-box[data-idx="\${i+1}"]\`);
+                if(next) next.focus();
+              } else if(e.key==='Enter'){
+                handle();
+              }
+            });
+            boxesEl.appendChild(inp);
+          }
         });
 
       function handle(){
-        const g=normalize(inputEl.value.trim());
-        if(!answer) return;
-        const dist=levenshtein(g,answer);
-        const ratio=1-dist/Math.max(g.length,answer.length);
-        if(g===answer||ratio>=0.8){
+        const guess=Array.from(document.querySelectorAll('.letter-box'))
+          .map(i=>i.value||'').join('');
+        const norm=normalize(guess);
+        const dist=levenshtein(norm,answer);
+        const ratio=1-dist/Math.max(norm.length,answer.length);
+        if(norm===answer||ratio>=0.8){
           resEl.textContent='🎉 Bravo ! C’est '+answer.charAt(0).toUpperCase()+answer.slice(1);
-          inputEl.disabled=true;
+          document.querySelectorAll('.letter-box').forEach(i=>i.disabled=true);
         } else {
-          lives--;
-          hints=Math.min(hints+1,answer.length);
-          hintEl.textContent=answer.split('').map((c,i)=>i<hints?c.toUpperCase():'_').join('');
+          lives--; hints=Math.min(hints+1,answer.length);
+          // révèle next lettre
+          const toReveal=document.querySelector(\`.letter-box[data-idx="\${hints-1}"]\`);
+          if(toReveal){
+            toReveal.value=answer[hints-1].toUpperCase();
+            toReveal.disabled=true;
+          }
+          // efface tout ce qui reste
+          document.querySelectorAll('.letter-box:not(:disabled)')
+            .forEach(i=>i.value='');
           livesEl.textContent='Vies restantes : '+lives;
           if(lives>0){
             resEl.textContent='❌ Essayez encore !';
           } else {
             resEl.textContent='💡 C’était '+answer.charAt(0).toUpperCase()+answer.slice(1);
-            inputEl.disabled=true;
+            document.querySelectorAll('.letter-box').forEach(i=>i.disabled=true);
           }
         }
       }
-
-      inputEl.addEventListener('keydown',e=>{
-        if(e.key==='Enter'){ e.preventDefault(); handle(); }
-      });
       `:``}
     })();
   </script>

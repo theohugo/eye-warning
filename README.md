@@ -53,6 +53,10 @@ This README provides an overview of the **customizable commands**, **installatio
    * Press `F5` or go to **Run and Debug** and select **Run Extension**.
    * A new **Extension Development Host** window will open.
 
+4. **Create reel version**:
+ ```bash
+  vsce package
+   ```
 ---
 
 ## Testing & Usage

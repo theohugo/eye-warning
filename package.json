@@ -1,7 +1,7 @@
 {
   "name": "eye-warning",
   "displayName": "eye-warning",
-  "publisher": "ton-pseudo",                 
+  "publisher": "ton-pseudo",
   "description": "Extension to prevent you from staying too long in front of your screen",
   "version": "0.0.1",
   "engines": {
@@ -10,17 +10,21 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["*"],                  
+  "activationEvents": ["*"],
   "main": "./dist/extension.js",
-  "files": ["dist/**", "images/**"],          
+  "files": ["dist/**", "images/**"],
   "contributes": {
     "commands": [
+      {
+        "command": "eye-warning.setInterval",
+        "title": "Eye Warning: Set Interval"
+      },
       {
         "command": "eye-warning.helloWorld",
         "title": "Hello World"
       }
     ],
-    "configuration": {                        
+    "configuration": {
       "title": "Eye Warning",
       "properties": {
         "eye-warning.interval": {

@@ -164,61 +164,27 @@ function showPanel(
     imgUri = panel.webview.asWebviewUri(imgUri);
   }
 
-  // HTML/CSS + JS pour le mini-jeu Pokémon avec nom français, accents et casse ignorés
+  // HTML/CSS + JS pour le mini-jeu Pokémon avec nom français, accents/casse ignorés, fuzzy match ≥80%
   panel.webview.html = `<!DOCTYPE html>
 <html>
 <head>
   <style>
-    html, body {
-      margin:0; padding:0;
-      height:100%; width:100%;
-      display:flex; flex-direction:column;
-      justify-content:center; align-items:center;
-      background:#1e1e1e;
-    }
-    .container {
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .pokemon {
-      width: 200%;
-      image-rendering: pixelated;
-    }
+    html, body { margin:0; padding:0; height:100%; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#1e1e1e; }
+    .container { position: relative; display: flex; justify-content: center; align-items: center; }
+    img { max-width:100%; max-height:100%; object-fit:contain; }
+    .pokemon { width: 200%; image-rendering: pixelated; }
     .bubble {
-      position: absolute;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      color: black;
-      padding: 8px 12px;
-      border-radius: 12px;
-      font-size: 14px;
-      white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
+      background: white; color: black; padding: 8px 12px; border-radius: 12px;
+      font-size: 14px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
     .bubble::after {
-      content: "";
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 10px 8px 0 8px;
-      border-style: solid;
-      border-color: white transparent transparent transparent;
+      content: ""; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+      border-width: 10px 8px 0 8px; border-style: solid; border-color: white transparent transparent transparent;
     }
-    .game {
-      margin-top: 16px;
-      text-align: center;
-    }
+    .game { margin-top: 16px; text-align: center; }
     #lives { margin-bottom: 8px; color: #fff; font-size: 14px; }
-    #guessInput {
-      padding: 4px 8px;
-      font-size: 14px;
-      width: 240px;
-    }
+    #guessInput { padding: 4px 8px; font-size: 14px; width: 240px; }
     #guessBtn { padding: 4px 12px; font-size: 14px; margin-left: 8px; }
     #result { margin-top: 12px; font-size: 16px; color: #ffd700; }
     .filename { margin-top:12px; font-size:14px; color:#888; }
@@ -240,12 +206,27 @@ function showPanel(
 
   <script>
     (function() {
-      // utilitaire pour ôter accents + forcer minuscules
+      // Normalize: remove accents, lowercase
       function normalize(str) {
-        return str
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase();
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      }
+      // Levenshtein distance
+      function levenshtein(a, b) {
+        const m = a.length, n = b.length;
+        const dp = Array(m+1).fill(null).map(() => Array(n+1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            const cost = a[i-1] === b[j-1] ? 0 : 1;
+            dp[i][j] = Math.min(
+              dp[i-1][j] + 1,
+              dp[i][j-1] + 1,
+              dp[i-1][j-1] + cost
+            );
+          }
+        }
+        return dp[m][n];
       }
 
       ${usePokemon ? `
@@ -258,7 +239,6 @@ function showPanel(
           answer = fr ? fr.name : data.name;
           answer = normalize(answer);
         });
-
       const livesEl = document.getElementById('lives');
       const inputEl = document.getElementById('guessInput');
       const btnEl   = document.getElementById('guessBtn');
@@ -267,7 +247,9 @@ function showPanel(
       btnEl.addEventListener('click', () => {
         const guessNorm = normalize(inputEl.value.trim());
         if (!answer) return;
-        if (guessNorm === answer) {
+        const dist = levenshtein(guessNorm, answer);
+        const ratio = 1 - dist / Math.max(guessNorm.length, answer.length);
+        if (guessNorm === answer || ratio >= 0.8) {
           resultEl.textContent = '🎉 Bravo ! C’est ' + answer.charAt(0).toUpperCase() + answer.slice(1);
           btnEl.disabled = true; inputEl.disabled = true;
         } else {
@@ -283,7 +265,7 @@ function showPanel(
         }
       });
       ` : ``}
-    }());
+    })();
   </script>
 </body>
 </html>`;

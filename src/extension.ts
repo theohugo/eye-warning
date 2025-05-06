@@ -122,13 +122,11 @@ function showPanel(
   let pokemonId = -1;
 
   if (usePokemon) {
-    // Mode Pokémon : on choisit un sprite externe
     pokemonId = Math.floor(Math.random() * 898) + 1;
     const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
     imgUri = vscode.Uri.parse(spriteUrl);
     label  = `Pokémon n°${pokemonId}`;
   } else {
-    // Mode images locales
     const defaultFolder = path.join(context.extensionPath, 'images');
     const baseFolder    = path.isAbsolute(folderPath) && folderPath !== ''
       ? folderPath
@@ -139,7 +137,7 @@ function showPanel(
       pics = getAllPngFiles(defaultFolder);
     }
     if (pics.length === 0) {
-      return; // rien à afficher
+      return;
     }
 
     const pickPath = pics[Math.floor(Math.random() * pics.length)];
@@ -148,7 +146,6 @@ function showPanel(
     localRoots     = [vscode.Uri.file(path.dirname(pickPath))];
   }
 
-  // Création du Webview (scripts activés pour le jeu)
   const panel = vscode.window.createWebviewPanel(
     'eyeWarning',
     '👁️ Eye Warning',
@@ -159,112 +156,150 @@ function showPanel(
     }
   );
 
-  // Conversion en URI Webview pour les images locales
   if (!usePokemon) {
     imgUri = panel.webview.asWebviewUri(imgUri);
   }
 
-  // HTML/CSS + JS pour le mini-jeu Pokémon avec nom français, accents/casse ignorés, fuzzy match ≥80%
   panel.webview.html = `<!DOCTYPE html>
 <html>
 <head>
   <style>
-    html, body { margin:0; padding:0; height:100%; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#1e1e1e; }
-    .container { position: relative; display: flex; justify-content: center; align-items: center; }
+    html, body {
+      margin:0; padding:0;
+      height:100%; width:100%;
+      display:flex; flex-direction:column;
+      justify-content:center; align-items:center;
+      background:#1e1e1e;
+    }
+    .container {
+      position: relative;
+      display:flex; justify-content:center; align-items:center;
+    }
+    .pokemon {
+      width:200%; image-rendering:pixelated;
+    }
     img { max-width:100%; max-height:100%; object-fit:contain; }
-    .pokemon { width: 200%; image-rendering: pixelated; }
     .bubble {
-      position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
-      background: white; color: black; padding: 8px 12px; border-radius: 12px;
-      font-size: 14px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      position:absolute; top:-30%; left:50%;
+      transform:translateX(-50%);
+      background:white; color:black;
+      padding:8px 12px; border-radius:12px;
+      font-size:14px; white-space:nowrap;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
     }
     .bubble::after {
-      content: ""; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
-      border-width: 10px 8px 0 8px; border-style: solid; border-color: white transparent transparent transparent;
+      content:""; position:absolute; bottom:-10px; left:50%;
+      transform:translateX(-50%);
+      border-width:10px 8px 0 8px; border-style:solid;
+      border-color:white transparent transparent transparent;
     }
-    .game { margin-top: 16px; text-align: center; }
-    #lives { margin-bottom: 8px; color: #fff; font-size: 14px; }
-    #guessInput { padding: 4px 8px; font-size: 14px; width: 240px; }
-    #guessBtn { padding: 4px 12px; font-size: 14px; margin-left: 8px; }
-    #result { margin-top: 12px; font-size: 16px; color: #ffd700; }
-    .filename { margin-top:12px; font-size:14px; color:#888; }
+    .game {
+      margin-top:16px; padding:16px;
+      background:#252526; border:2px solid #3c3c3c;
+      border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.5);
+      display:flex; flex-direction:column;
+      align-items:center; /* centre les éléments */
+      width:auto; /* largeur automatique */
+    }
+    #lives {
+      margin-bottom:8px;
+      background:#007acc; color:#fff;
+      padding:4px 8px; border-radius:4px;
+      font-weight:bold;
+    }
+    #guessInput {
+      padding:6px 8px; font-size:14px;
+      border:none; border-radius:4px; outline:none;
+      width:160px; /* moins large */
+      margin:0 auto; /* centré */
+    }
+    #result {
+      margin-top:12px; font-size:16px; color:#ffd700;
+    }
+    #hint {
+      margin-top:8px; font-size:16px;
+      letter-spacing:4px; color:#a9f;
+      background:#444; padding:4px 8px;
+      border-radius:4px; font-family:monospace;
+    }
+    .filename {
+      margin-top:12px; font-size:14px; color:#888;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <img src="${imgUri}" class="${usePokemon ? 'pokemon' : ''}" />
-    ${usePokemon ? `<div class="bubble">Attention à tes yeux !</div>` : ``}
+    <img src="${imgUri}" class="${usePokemon?'pokemon':''}" />
+    ${usePokemon?`<div class="bubble">Attention à tes yeux !</div>`:``}
   </div>
-  ${usePokemon ? `
+  ${usePokemon?`
   <div class="game">
     <div id="lives">Vies restantes : 3</div>
-    <input type="text" id="guessInput" placeholder="QUEL EST CE POKÉMON ?" />
-    <button id="guessBtn">Valider</button>
+    <input id="guessInput" placeholder="QUEL EST CE POKÉMON ?" />
     <div id="result"></div>
-  </div>` : ``}
+    <div id="hint"></div>
+  </div>`:``}
   <div class="filename">${label}</div>
 
   <script>
-    (function() {
-      // Normalize: remove accents, lowercase
-      function normalize(str) {
-        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    (function(){
+      function normalize(str){
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       }
-      // Levenshtein distance
-      function levenshtein(a, b) {
-        const m = a.length, n = b.length;
-        const dp = Array(m+1).fill(null).map(() => Array(n+1).fill(0));
-        for (let i = 0; i <= m; i++) dp[i][0] = i;
-        for (let j = 0; j <= n; j++) dp[0][j] = j;
-        for (let i = 1; i <= m; i++) {
-          for (let j = 1; j <= n; j++) {
-            const cost = a[i-1] === b[j-1] ? 0 : 1;
-            dp[i][j] = Math.min(
-              dp[i-1][j] + 1,
-              dp[i][j-1] + 1,
-              dp[i-1][j-1] + cost
-            );
+      function levenshtein(a,b){
+        const m=a.length,n=b.length;
+        const dp=Array(m+1).fill(null).map(()=>Array(n+1).fill(0));
+        for(let i=0;i<=m;i++) dp[i][0]=i;
+        for(let j=0;j<=n;j++) dp[0][j]=j;
+        for(let i=1;i<=m;i++){
+          for(let j=1;j<=n;j++){
+            const cost=a[i-1]===b[j-1]?0:1;
+            dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+cost);
           }
         }
         return dp[m][n];
       }
 
-      ${usePokemon ? `
-      let lives = 3;
-      let answer = '';
-      fetch('https://pokeapi.co/api/v2/pokemon-species/${pokemonId}')
-        .then(res => res.json())
-        .then(data => {
-          const fr = data.names.find(n => n.language.name === 'fr');
-          answer = fr ? fr.name : data.name;
-          answer = normalize(answer);
-        });
-      const livesEl = document.getElementById('lives');
-      const inputEl = document.getElementById('guessInput');
-      const btnEl   = document.getElementById('guessBtn');
-      const resultEl= document.getElementById('result');
+      ${usePokemon?`
+      let lives=3,answer='',hints=0;
+      const livesEl=document.getElementById('lives');
+      const inputEl=document.getElementById('guessInput');
+      const resEl=document.getElementById('result');
+      const hintEl=document.getElementById('hint');
 
-      btnEl.addEventListener('click', () => {
-        const guessNorm = normalize(inputEl.value.trim());
-        if (!answer) return;
-        const dist = levenshtein(guessNorm, answer);
-        const ratio = 1 - dist / Math.max(guessNorm.length, answer.length);
-        if (guessNorm === answer || ratio >= 0.8) {
-          resultEl.textContent = '🎉 Bravo ! C’est ' + answer.charAt(0).toUpperCase() + answer.slice(1);
-          btnEl.disabled = true; inputEl.disabled = true;
+      fetch('https://pokeapi.co/api/v2/pokemon-species/${pokemonId}')
+        .then(r=>r.json()).then(data=>{
+          const fr=data.names.find(n=>n.language.name==='fr');
+          answer=normalize(fr?fr.name:data.name);
+          hintEl.textContent='_'.repeat(answer.length);
+        });
+
+      function handle(){
+        const g=normalize(inputEl.value.trim());
+        if(!answer) return;
+        const dist=levenshtein(g,answer);
+        const ratio=1-dist/Math.max(g.length,answer.length);
+        if(g===answer||ratio>=0.8){
+          resEl.textContent='🎉 Bravo ! C’est '+answer.charAt(0).toUpperCase()+answer.slice(1);
+          inputEl.disabled=true;
         } else {
           lives--;
-          if (lives > 0) {
-            livesEl.textContent = 'Vies restantes : ' + lives;
-            resultEl.textContent = '❌ Essayez encore !';
+          hints=Math.min(hints+1,answer.length);
+          hintEl.textContent=answer.split('').map((c,i)=>i<hints?c.toUpperCase():'_').join('');
+          livesEl.textContent='Vies restantes : '+lives;
+          if(lives>0){
+            resEl.textContent='❌ Essayez encore !';
           } else {
-            livesEl.textContent = 'Vies restantes : 0';
-            resultEl.textContent = '💡 C’était ' + answer.charAt(0).toUpperCase() + answer.slice(1);
-            btnEl.disabled = true; inputEl.disabled = true;
+            resEl.textContent='💡 C’était '+answer.charAt(0).toUpperCase()+answer.slice(1);
+            inputEl.disabled=true;
           }
         }
+      }
+
+      inputEl.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){ e.preventDefault(); handle(); }
       });
-      ` : ``}
+      `:``}
     })();
   </script>
 </body>

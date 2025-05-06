@@ -20,6 +20,10 @@
         "title": "Eye Warning: Set Interval"
       },
       {
+        "command": "eye-warning.setImageFolder",   
+        "title": "Eye Warning: Set Image Folder"
+      },
+      {
         "command": "eye-warning.helloWorld",
         "title": "Hello World"
       }
@@ -32,6 +36,11 @@
           "default": 20,
           "minimum": 1,
           "description": "Interval in minutes between warnings"
+        },
+        "eye-warning.imageFolder": {
+          "type": "string",
+          "default": "images",
+          "description": "Relative path (from extension root) to your PNG folder"
         }
       }
     }

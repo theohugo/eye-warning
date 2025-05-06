@@ -119,13 +119,14 @@ function showPanel(
   let imgUri: vscode.Uri;
   let label: string;
   let localRoots: vscode.Uri[] = [];
+  let pokemonId = -1;
 
   if (usePokemon) {
     // Mode Pokémon : on choisit un sprite externe
-    const id        = Math.floor(Math.random() * 898) + 1;
-    const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+    pokemonId = Math.floor(Math.random() * 898) + 1;
+    const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
     imgUri = vscode.Uri.parse(spriteUrl);
-    label  = `Pokémon n°${id}`;
+    label  = `Pokémon n°${pokemonId}`;
   } else {
     // Mode images locales
     const defaultFolder = path.join(context.extensionPath, 'images');
@@ -147,13 +148,13 @@ function showPanel(
     localRoots     = [vscode.Uri.file(path.dirname(pickPath))];
   }
 
-  // Création du Webview
+  // Création du Webview (scripts activés pour le jeu)
   const panel = vscode.window.createWebviewPanel(
     'eyeWarning',
     '👁️ Eye Warning',
     vscode.ViewColumn.One,
     {
-      enableScripts: false,
+      enableScripts: true,
       localResourceRoots: localRoots
     }
   );
@@ -163,7 +164,7 @@ function showPanel(
     imgUri = panel.webview.asWebviewUri(imgUri);
   }
 
-  // HTML/CSS avec bulle pour le Pokémon
+  // HTML/CSS + JS pour le mini-jeu Pokémon avec nom français, accents et casse ignorés
   panel.webview.html = `<!DOCTYPE html>
 <html>
 <head>
@@ -181,16 +182,10 @@ function showPanel(
       justify-content: center;
       align-items: center;
     }
-    img {
-      max-width:100%; max-height:100%;
-      object-fit:contain;
-    }
-    /* agrandit le pokémon en pixel-art de 200% */
     .pokemon {
       width: 200%;
       image-rendering: pixelated;
     }
-    /* bulle de dialogue centrée un peu plus à gauche */
     .bubble {
       position: absolute;
       top: -20%;
@@ -214,22 +209,82 @@ function showPanel(
       border-style: solid;
       border-color: white transparent transparent transparent;
     }
-    .filename {
-      margin-top:12px;
-      font-size:14px;
-      color:#888;
+    .game {
+      margin-top: 16px;
+      text-align: center;
     }
+    #lives { margin-bottom: 8px; color: #fff; font-size: 14px; }
+    #guessInput {
+      padding: 4px 8px;
+      font-size: 14px;
+      width: 240px;
+    }
+    #guessBtn { padding: 4px 12px; font-size: 14px; margin-left: 8px; }
+    #result { margin-top: 12px; font-size: 16px; color: #ffd700; }
+    .filename { margin-top:12px; font-size:14px; color:#888; }
   </style>
 </head>
 <body>
   <div class="container">
     <img src="${imgUri}" class="${usePokemon ? 'pokemon' : ''}" />
-    ${usePokemon
-      ? `<div class="bubble">Attention à tes yeux !</div>`
-      : ``
-    }
+    ${usePokemon ? `<div class="bubble">Attention à tes yeux !</div>` : ``}
   </div>
+  ${usePokemon ? `
+  <div class="game">
+    <div id="lives">Vies restantes : 3</div>
+    <input type="text" id="guessInput" placeholder="QUEL EST CE POKÉMON ?" />
+    <button id="guessBtn">Valider</button>
+    <div id="result"></div>
+  </div>` : ``}
   <div class="filename">${label}</div>
+
+  <script>
+    (function() {
+      // utilitaire pour ôter accents + forcer minuscules
+      function normalize(str) {
+        return str
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+      }
+
+      ${usePokemon ? `
+      let lives = 3;
+      let answer = '';
+      fetch('https://pokeapi.co/api/v2/pokemon-species/${pokemonId}')
+        .then(res => res.json())
+        .then(data => {
+          const fr = data.names.find(n => n.language.name === 'fr');
+          answer = fr ? fr.name : data.name;
+          answer = normalize(answer);
+        });
+
+      const livesEl = document.getElementById('lives');
+      const inputEl = document.getElementById('guessInput');
+      const btnEl   = document.getElementById('guessBtn');
+      const resultEl= document.getElementById('result');
+
+      btnEl.addEventListener('click', () => {
+        const guessNorm = normalize(inputEl.value.trim());
+        if (!answer) return;
+        if (guessNorm === answer) {
+          resultEl.textContent = '🎉 Bravo ! C’est ' + answer.charAt(0).toUpperCase() + answer.slice(1);
+          btnEl.disabled = true; inputEl.disabled = true;
+        } else {
+          lives--;
+          if (lives > 0) {
+            livesEl.textContent = 'Vies restantes : ' + lives;
+            resultEl.textContent = '❌ Essayez encore !';
+          } else {
+            livesEl.textContent = 'Vies restantes : 0';
+            resultEl.textContent = '💡 C’était ' + answer.charAt(0).toUpperCase() + answer.slice(1);
+            btnEl.disabled = true; inputEl.disabled = true;
+          }
+        }
+      });
+      ` : ``}
+    }());
+  </script>
 </body>
 </html>`;
 }

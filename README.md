@@ -1,71 +1,66 @@
-# eye-warning README
+# eye-warning
 
-This is the README for your extension "eye-warning". After writing up a brief description, we recommend including the following sections.
-
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+This README provides an overview of the **customizable commands**, **installation from GitHub**, and **how to build and test** the extension.
 
 ---
 
-## Following extension guidelines
+## Customizable Commands
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+* **Eye Warning: Set Interval** (`eye-warning.setInterval`)
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+  * Change the **interval** (in minutes) between each warning popup.
+* **Eye Warning: Set Image Folder** (`eye-warning.setImageFolder`)
 
-## Working with Markdown
+  * Define the **absolute path** to the folder containing your `.png` images.
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+> **Tip**: Open the Command Palette with `Ctrl+Shift+P` and start typing the command name.
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+---
 
-## For more information
+## Installation from GitHub
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+1. **Clone** the repository:
 
-**Enjoy!**
+   ```bash
+   git clone https://github.com/theohugo/eye-warning.git
+   cd eye-warning
+   ```
+2. **Install Node.js** (v14 or higher):
+
+   * Download and install from [https://nodejs.org](https://nodejs.org)
+3. **Install dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+---
+
+## Build & Launch
+
+1. **Compile** the TypeScript code:
+
+   ```bash
+   npm run compile
+   ```
+2. **Open** the project in VS Code:
+
+   ```bash
+   code .
+   ```
+3. **Start Debugging**:
+
+   * Press `F5` or go to **Run and Debug** and select **Run Extension**.
+   * A new **Extension Development Host** window will open.
+
+---
+
+## Testing & Usage
+
+* The **Status Bar** displays a live **countdown** until the next warning.
+* When the countdown reaches zero, a **Webview** opens with a random image from the configured folder.
+* You can **adjust the interval** or **change the image folder** at any time using their respective commands.
+
+---
+
+Enjoy using **eye-warning** and don’t forget to take breaks! 🎉

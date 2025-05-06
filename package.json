@@ -3,14 +3,24 @@
   "displayName": "eye-warning",
   "publisher": "ton-pseudo",
   "description": "Extension to prevent you from staying too long in front of your screen",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theohugo/eye-warning.git"
+  },
   "engines": {
     "vscode": "^1.99.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": ["*"],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:eye-warning.helloWorld",
+    "onCommand:eye-warning.setInterval",
+    "onCommand:eye-warning.setImageFolder"
+  ],
   "main": "./dist/extension.js",
   "files": ["dist/**", "images/**"],
   "contributes": {
@@ -20,7 +30,7 @@
         "title": "Eye Warning: Set Interval"
       },
       {
-        "command": "eye-warning.setImageFolder",   
+        "command": "eye-warning.setImageFolder",
         "title": "Eye Warning: Set Image Folder"
       },
       {
@@ -40,7 +50,7 @@
         "eye-warning.imageFolder": {
           "type": "string",
           "default": "images",
-          "description": "Relative path (from extension root) to your PNG folder"
+          "description": "Absolute path to your PNG folder (leave empty for default)"
         }
       }
     }
